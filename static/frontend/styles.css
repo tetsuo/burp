@@ -1,6 +1,7 @@
 :root {
   --primary-color: #3365d9;
   --secondary-color: #008000;
+  --help-color: #db00af;
   --inverted-primary-color: #ffffff;
   --background-color: #ffffff;
   --link-color: #0000ff;
@@ -41,7 +42,6 @@ button {
 }
 
 .chat .time {
-  width: 8ex;
   margin-right: 1ex;
 }
 
@@ -100,11 +100,7 @@ button {
 }
 
 .chat .lines .line {
-  padding: 0.096em 0.3em;
-}
-
-.chat .lines .line .time {
-  display: none;
+  padding: 0.096em 0.5em;
 }
 
 .chat .lines .line .user {
@@ -113,6 +109,10 @@ button {
 
 .chat .lines .line .assistant {
   color: var(--secondary-color);
+}
+
+.chat .lines .line .help {
+  color: var(--help-color);
 }
 
 .chat .lines .line .message {

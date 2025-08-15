@@ -2,9 +2,10 @@ const AssistantMessage = 1
 const UserMessage = 2
 
 const AssistantName = 'burp'
+const HelpName = 'help'
 
 class Chat {
-  constructor({ nickname = 'anon', channel = 'status', subscribeUrl, publishUrl } = {}) {
+  constructor({ nickname = 'anon', channel = 'status', model, subscribeUrl, publishUrl } = {}) {
     // alphanumeric only, max 32 chars
     this.nickname = sanitizeAlphaNum(nickname, 32) || 'anon'
     this.channel = sanitizeAlphaNum(channel, 32) || 'status'
@@ -16,6 +17,7 @@ class Chat {
     this.msgBuffer = ''
     this.elements = {}
     this.spinner = { timer: null, i: 0, running: false, frames: ['-', '\\', '|', '/'] }
+    this.model = model
   }
 
   setUserNickname(nickname) {
@@ -25,7 +27,7 @@ class Chat {
         return
       }
       this.nickname = nickname
-      this.elements.userLabel.textContent = `[${this.nickname}]`
+      this.elements.userLabel.textContent = `[${this.nickname}/${this.model}]`
     }
   }
 
@@ -114,6 +116,8 @@ class Chat {
     uspan.className = 'user'
     if (sender === AssistantName) {
       uspan.className = 'assistant'
+    } else if (sender === HelpName) {
+      uspan.className = 'help'
     }
     uspan.textContent = `<${sender}>`
 
@@ -149,12 +153,26 @@ class Chat {
       }
 
       this.elements.input.value = ''
-      this.startSpinner()
 
-      this._send(msg).catch(err => {
-        console.error('send failed:', err)
-        this.stopSpinner()
-      })
+      if (msg.startsWith('/')) {
+        switch (msg.slice(1).trim()) {
+          case 'model':
+            this.addMessage(msg, this.nickname, msg.Time)
+            this.showModelUsage()
+            return
+          default:
+            this.addMessage(msg, this.nickname, msg.Time)
+            this.addMessage('unknown command', HelpName)
+            return
+        }
+      } else {
+        this.startSpinner()
+
+        this._send(msg).catch(err => {
+          console.error('send failed:', err)
+          this.stopSpinner()
+        })
+      }
     })
   }
 
@@ -239,6 +257,23 @@ class Chat {
     }
   }
 
+  async showModelUsage() {
+    try {
+      const u = new URL('/models', this.subscribeUrl)
+
+      const res = await fetch(u.toString())
+      if (!res.ok) {
+        throw new Error(res.status)
+      }
+      const json = await res.json()
+      const keys = Object.keys(json)
+      this.addMessage('usage: /model modelname', HelpName)
+      this.addMessage('specify one of: ' + keys.join(' '), HelpName)
+    } catch (e) {
+      console.error('listing models failed:', e)
+    }
+  }
+
   async pollLoop() {
     while (true) {
       try {
@@ -266,6 +301,7 @@ class Chat {
   async _send(msg) {
     const u = new URL('/ask', this.publishUrl)
     u.searchParams.set('id', this.channel)
+    u.searchParams.set('model', this.model)
     return fetch(u.toString(), {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },

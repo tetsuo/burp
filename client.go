@@ -3,55 +3,54 @@ package main
 import (
 	"context"
 	_ "embed"
-	"fmt"
-	"os"
+	"log"
 	"strings"
 	"time"
 
+	anthropic "github.com/anthropics/anthropic-sdk-go"
 	"github.com/openai/openai-go/v2"
 	"github.com/tetsuo/bbq"
 )
 
 type Worker struct {
-	c openai.Client
+	oc *openai.Client
+	ac *anthropic.Client
 }
 
-func NewWorker(oc openai.Client) *Worker {
-	return &Worker{c: oc}
+func NewWorker(oc *openai.Client, ac *anthropic.Client) *Worker {
+	return &Worker{oc: oc, ac: ac}
 }
 
 //go:embed prompt.md
 var systemMsg string
 
-func (w *Worker) Send(ctx context.Context, id, userMsg string) {
+func (w *Worker) Send(ctx context.Context, id, userMsg string, model ChatModel) {
 	q := bbq.New[string](16)
 
 	go func(q *bbq.BBQ[string]) {
-		// pull last entries
-		hist := snapshotHistory(id, keepMin)
-
-		msgs := []openai.ChatCompletionMessageParamUnion{
-			openai.SystemMessage(systemMsg),
+		switch providerFor[model] {
+		case ChatProviderOpenAI:
+			if w.oc == nil {
+				log.Println("warn: openai not configured; aborting message")
+				q.Close()
+				return
+			}
+			w.streamOpenAI(ctx, id, model, q)
+		case ChatProviderAnthropic:
+			if w.ac == nil {
+				log.Println("warn: anthropic not configured; aborting message")
+				q.Close()
+				return
+			}
+			w.streamAnthropic(ctx, id, model, q)
+		default:
+			log.Println("warn: unrecognized model; aborting message")
+			q.Close()
+			return
 		}
-		msgs = append(msgs, historyToMessages(hist)...)
-
-		params := openai.ChatCompletionNewParams{
-			Model:    openai.ChatModelGPT5Nano,
-			Messages: msgs,
-		}
-
-		stream := w.c.Chat.Completions.NewStreaming(ctx, params)
-		defer stream.Close()
-
-		for stream.Next() {
-			q.Write(stream.Current().Choices[0].Delta.Content)
-		}
-		if err := stream.Err(); err != nil {
-			fmt.Fprintf(os.Stderr, "\nError: %v\n", err)
-		}
-		q.Close()
 	}(q)
 
+	// Batcher: publish chunks and final empty-string terminator:
 	go func(q *bbq.BBQ[string]) {
 		// emit a batch when either 10 tokens is reached, or 5 seconds have passed
 		for batch := range q.SlicesWhen(10, time.Second*5) {
@@ -63,15 +62,18 @@ func (w *Worker) Send(ctx context.Context, id, userMsg string) {
 				continue
 			}
 			publish(&Message{
-				ID:   id,
-				Role: AssistantMessage,
-				Body: body,
+				ID:    id,
+				Role:  AssistantMessage,
+				Body:  body,
+				Model: model,
 			})
 		}
+		// empty-string terminator
 		publish(&Message{
-			ID:   id,
-			Role: AssistantMessage,
-			Body: "",
+			ID:    id,
+			Role:  AssistantMessage,
+			Body:  "",
+			Model: model,
 		})
 	}(q)
 }
@@ -104,7 +106,7 @@ func snapshotHistory(id string, max int) []*Message {
 	return out
 }
 
-func historyToMessages(msgs []*Message) []openai.ChatCompletionMessageParamUnion {
+func historyToOpenAI(msgs []*Message) []openai.ChatCompletionMessageParamUnion {
 	p := make([]openai.ChatCompletionMessageParamUnion, 0, len(msgs))
 	for _, msg := range msgs {
 		switch msg.Role {
@@ -115,4 +117,68 @@ func historyToMessages(msgs []*Message) []openai.ChatCompletionMessageParamUnion
 		}
 	}
 	return p
+}
+
+func (w *Worker) streamOpenAI(ctx context.Context, id string, model ChatModel, q *bbq.BBQ[string]) {
+	// pull last entries
+	hist := snapshotHistory(id, keepMin)
+
+	msgs := []openai.ChatCompletionMessageParamUnion{
+		openai.SystemMessage(systemMsg),
+	}
+	msgs = append(msgs, historyToOpenAI(hist)...)
+
+	params := openai.ChatCompletionNewParams{
+		Model:    openai.ChatModel(model),
+		Messages: msgs,
+	}
+
+	stream := w.oc.Chat.Completions.NewStreaming(ctx, params)
+	defer stream.Close()
+
+	for stream.Next() {
+		q.Write(stream.Current().Choices[0].Delta.Content)
+	}
+	if err := stream.Err(); err != nil {
+		log.Printf("error: streamOpenAI: %v\n", err)
+	}
+	q.Close()
+}
+
+func (w *Worker) streamAnthropic(ctx context.Context, id string, model ChatModel, q *bbq.BBQ[string]) {
+	// Convert history to anthropic messages
+	hist := snapshotHistory(id, keepMin)
+	msgs := make([]anthropic.MessageParam, 0, len(hist)+1)
+	for _, m := range hist {
+		switch m.Role {
+		case UserMessage:
+			msgs = append(msgs, anthropic.NewUserMessage(anthropic.NewTextBlock(m.Body)))
+		case AssistantMessage:
+			msgs = append(msgs, anthropic.NewAssistantMessage(anthropic.NewTextBlock(m.Body)))
+		}
+	}
+
+	params := anthropic.MessageNewParams{
+		Model:     anthropic.Model(model),
+		MaxTokens: 1024,
+		Messages:  msgs,
+		System:    []anthropic.TextBlockParam{{Text: systemMsg}},
+	}
+
+	stream := w.ac.Messages.NewStreaming(ctx, params)
+	defer stream.Close()
+
+	for stream.Next() {
+		ev := stream.Current()
+		switch any := ev.AsAny().(type) {
+		case anthropic.ContentBlockDeltaEvent:
+			if td, ok := any.Delta.AsAny().(anthropic.TextDelta); ok {
+				q.Write(td.Text)
+			}
+		}
+	}
+	if err := stream.Err(); err != nil {
+		log.Printf("error: streamAnthropic: %v\n", err)
+	}
+	q.Close()
 }

@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
-	"html"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -118,6 +118,29 @@ func (s *Server) serveAsk(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Model choice (string, <=140 chars); validate against registry
+	m := r.FormValue("model")
+	if m == "" {
+		http.Error(w, "model cannot be empty", http.StatusBadRequest)
+		return
+	}
+	if len(m) > 140 {
+		http.Error(w, "model must be <= 140 characters", http.StatusBadRequest)
+		return
+	}
+
+	model := ChatModel(m)
+	if provider, exists := providerFor[model]; !exists {
+		http.Error(w, "unrecognized model", http.StatusBadRequest)
+		return
+	} else if provider == ChatProviderAnthropic && s.wkr.ac == nil {
+		http.Error(w, "model not supported", http.StatusServiceUnavailable)
+		return
+	} else if provider == ChatProviderOpenAI && s.wkr.oc == nil {
+		http.Error(w, "model not supported", http.StatusServiceUnavailable)
+		return
+	}
+
 	b, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 32<<10))
 	if err != nil {
 		w.WriteHeader(http.StatusRequestEntityTooLarge)
@@ -133,9 +156,18 @@ func (s *Server) serveAsk(w http.ResponseWriter, r *http.Request) {
 	})
 
 	// kick off work in the background
-	go s.wkr.Send(context.Background(), id, body)
+	go s.wkr.Send(context.Background(), id, body, model)
 
 	w.WriteHeader(http.StatusAccepted)
+}
+
+func (s *Server) serveModels(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Write(supportedModels)
 }
 
 func (s *Server) serveRoot(w http.ResponseWriter, r *http.Request) {
@@ -153,10 +185,11 @@ func (s *Server) serveRoot(w http.ResponseWriter, r *http.Request) {
 	<li><b><a href="/chat">/chat</a></b>: chat in a channel</li>
 	<li><b><a href="/wait">/wait</a></b>: long-poll 30s for next message (use ?id=&lt;channel&gt;&amp;after=&lt;RFC3339Nano&gt;)</li>
 	<li><b><a href="/recent">/recent</a></b>: recent messages in a channel</li>
+	<li><b><a href="/models">/models</a></b>: supported models</li>
 </ul></body></html>`)
 }
 
-func (*Server) serveChat(w http.ResponseWriter, r *http.Request) {
+func (s *Server) serveChat(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -168,10 +201,54 @@ func (*Server) serveChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	safeID := html.EscapeString(id)
+	var (
+		model    ChatModel
+		provider ChatProvider
+	)
+
+	// Model choice (string, <=140 chars); validate against registry
+	m := r.FormValue("model")
+	if m != "" && len(m) <= 140 {
+		model = ChatModel(m)
+		var exists bool
+		if provider, exists = providerFor[model]; !exists {
+			model = ""
+		}
+	}
+
+	switch provider {
+	case 0:
+		model = FallbackOpenAIChatModel
+		if s.wkr.ac == nil {
+			model = FallbackAnthropicChatModel
+		}
+		http.Redirect(w, r, fmt.Sprintf("/chat?id=%s&model=%s", id, string(model)), http.StatusFound)
+		return
+	case ChatProviderAnthropic:
+		if s.wkr.ac == nil {
+			http.Error(w, "model not supported", http.StatusServiceUnavailable)
+			return
+		} else if model == "" {
+			model = FallbackAnthropicChatModel
+			http.Redirect(w, r, fmt.Sprintf("/chat?id=%s&model=%s", id, string(model)), http.StatusFound)
+			return
+		}
+	case ChatProviderOpenAI:
+		if s.wkr.oc == nil {
+			http.Error(w, "model not supported", http.StatusServiceUnavailable)
+			return
+		} else if model == "" {
+			model = FallbackOpenAIChatModel
+			http.Redirect(w, r, fmt.Sprintf("/chat?id=%s&model=%s", id, string(model)), http.StatusFound)
+			return
+		}
+	}
+
+	m = string(model)
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
-	w.Write([]byte(`<!DOCTYPE html>
+	io.WriteString(w, `<!DOCTYPE html>
 <html>
   <head>
     <meta charset="utf-8">
@@ -186,10 +263,12 @@ func (*Server) serveChat(w http.ResponseWriter, r *http.Request) {
       <div class="cli">
         <div class="info">
           <span id="time">[00:00:00]</span>
-          <span id="user">[anon]</span>
-          <span id="channel">[`))
-	w.Write([]byte(safeID))
-	w.Write([]byte(`]</span>
+          <span id="user">[anon/`)
+	io.WriteString(w, m)
+	io.WriteString(w, `]</span>
+          <span id="channel">[#`)
+	io.WriteString(w, id)
+	io.WriteString(w, `]</span>
           <span id="spinner" class="spinner" aria-live="polite"></span>
         </div>
 
@@ -201,9 +280,12 @@ func (*Server) serveChat(w http.ResponseWriter, r *http.Request) {
 
     <script>
       const chat = new Chat({
-        channel: '`))
-	w.Write([]byte(safeID))
-	w.Write([]byte(`',
+        channel: '`)
+	io.WriteString(w, id)
+	io.WriteString(w, `',
+        model: '`)
+	io.WriteString(w, m)
+	io.WriteString(w, `',
         subscribeUrl: new URL('', window.location.href),
         publishUrl: new URL('', window.location.href),
       })
@@ -211,7 +293,7 @@ func (*Server) serveChat(w http.ResponseWriter, r *http.Request) {
       chat.mountTo(document)
     </script>
   </body>
-</html>`))
+</html>`)
 }
 
 func (s *Server) Install(mux *http.ServeMux) {
@@ -226,6 +308,7 @@ func (s *Server) Install(mux *http.ServeMux) {
 	mux.HandleFunc("/recent", serveRecent)
 	mux.HandleFunc("/chat", s.serveChat)
 	mux.HandleFunc("/ask", s.serveAsk)
+	mux.HandleFunc("/models", s.serveModels)
 }
 
 func isNonEmptyAlnum(s string) bool {

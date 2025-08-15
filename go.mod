@@ -3,6 +3,7 @@ module github.com/tetsuo/burp
 go 1.24.2
 
 require (
+	github.com/anthropics/anthropic-sdk-go v1.9.1
 	github.com/openai/openai-go/v2 v2.0.0
 	github.com/tetsuo/bbq v0.0.0-20241130034120-42390294d521
 	go4.org v0.0.0-20230225012048-214862532bf5

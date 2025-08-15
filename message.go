@@ -22,6 +22,8 @@ type Message struct {
 	ID string `json:",omitempty"`
 	// Body is the input.
 	Body string
+	// Model is the model used for assistant messages .
+	Model ChatModel `json:",omitempty"`
 	// Time is the time the message was received, or the time of the
 	// long poll timeout. This is what clients should send as the
 	// "after" URL parameter for the next message.
