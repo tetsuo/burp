@@ -112,6 +112,9 @@ class Chat {
 
     const uspan = document.createElement('span')
     uspan.className = 'user'
+    if (sender === AssistantName) {
+      uspan.className = 'assistant'
+    }
     uspan.textContent = `<${sender}>`
 
     const mspan = document.createElement('span')

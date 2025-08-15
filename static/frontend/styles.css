@@ -1,7 +1,8 @@
 :root {
   --primary-color: #3365d9;
-  --inverted-primary-color: white;
-  --background-color: white;
+  --secondary-color: #008000;
+  --inverted-primary-color: #ffffff;
+  --background-color: #ffffff;
   --link-color: #0000ff;
   --font-family: Monaco, 'MonacoRegular', Menlo, 'Courier New', monospace;
 }
@@ -108,6 +109,10 @@ button {
 
 .chat .lines .line .user {
   color: var(--primary-color);
+}
+
+.chat .lines .line .assistant {
+  color: var(--secondary-color);
 }
 
 .chat .lines .line .message {
