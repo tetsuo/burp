@@ -173,9 +173,8 @@ class Chat {
       return
     }
 
-    // Treat only non-empty bodies
     const body = msg.Body || ''
-    if (!body.trim()) {
+    if (msg.Role !== AssistantMessage && !body.trim()) {
       return
     }
 
@@ -186,7 +185,8 @@ class Chat {
     }
 
     if (msg.Role === AssistantMessage) {
-      if (body === 'EOF') {
+      // EOF:
+      if (body === '') {
         // flush any remaining buffered text
         const msg = this.msgBuffer.trim()
         this.msgBuffer = ''
