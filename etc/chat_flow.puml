@@ -1,0 +1,36 @@
+@startuml
+actor "User" as User
+participant "Client" as Client
+participant "Subscribe API" as Subscribe
+participant "Publish API" as Publish
+
+' Initial load
+User -> Client: Open chat widget
+activate Client
+Client -> Subscribe: GET /recent (load recent)
+activate Subscribe
+Subscribe --> Client: 200 JSON [messages...]
+deactivate Subscribe
+deactivate Client
+
+' Receive (long-poll)
+Client -> Subscribe: GET /wait (long poll)
+activate Subscribe
+Subscribe --> Client: 200 JSON {message}
+deactivate Subscribe
+
+' Send
+User -> Client: Send message (text)
+activate Client
+Client -> Publish: POST /ask (submit message)
+activate Publish
+Publish --> Client: 200 OK
+deactivate Publish
+deactivate Client
+
+' Receive echo of sent message
+Client -> Subscribe: GET /wait (long poll)
+activate Subscribe
+Subscribe --> Client: 200 JSON {message}
+deactivate Subscribe
+@enduml
