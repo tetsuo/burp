@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -212,16 +211,12 @@ func (s *Server) serveChat(w http.ResponseWriter, r *http.Request) {
 		if s.wkr.oc == nil {
 			model = FallbackAnthropicChatModel
 		}
-		http.Redirect(w, r, fmt.Sprintf("/chat?id=%s&model=%s", id, string(model)), http.StatusFound)
-		return
 	case ChatProviderAnthropic:
 		if s.wkr.ac == nil {
 			http.Error(w, "model not supported", http.StatusServiceUnavailable)
 			return
 		} else if model == "" {
 			model = FallbackAnthropicChatModel
-			http.Redirect(w, r, fmt.Sprintf("/chat?id=%s&model=%s", id, string(model)), http.StatusFound)
-			return
 		}
 	case ChatProviderOpenAI:
 		if s.wkr.oc == nil {
@@ -229,12 +224,8 @@ func (s *Server) serveChat(w http.ResponseWriter, r *http.Request) {
 			return
 		} else if model == "" {
 			model = FallbackOpenAIChatModel
-			http.Redirect(w, r, fmt.Sprintf("/chat?id=%s&model=%s", id, string(model)), http.StatusFound)
-			return
 		}
 	}
-
-	m = string(model)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
@@ -270,7 +261,7 @@ func (s *Server) serveChat(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, id)
 	io.WriteString(w, `',
         model: '`)
-	io.WriteString(w, m)
+	io.WriteString(w, string(model))
 	io.WriteString(w, `',
         subscribeUrl: new URL('/', window.location.href),
         publishUrl: new URL('/', window.location.href),
