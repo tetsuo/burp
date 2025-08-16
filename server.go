@@ -209,7 +209,7 @@ func (s *Server) serveChat(w http.ResponseWriter, r *http.Request) {
 	switch provider {
 	case 0:
 		model = FallbackOpenAIChatModel
-		if s.wkr.ac == nil {
+		if s.wkr.oc == nil {
 			model = FallbackAnthropicChatModel
 		}
 		http.Redirect(w, r, fmt.Sprintf("/chat?id=%s&model=%s", id, string(model)), http.StatusFound)
