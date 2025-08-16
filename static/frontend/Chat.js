@@ -154,25 +154,13 @@ class Chat {
 
       this.elements.input.value = ''
 
-      if (msg.startsWith('/')) {
-        switch (msg.slice(1).trim()) {
-          case 'model':
-            this.addMessage(msg, this.nickname, msg.Time)
-            this.showModelUsage()
-            return
-          default:
-            this.addMessage(msg, this.nickname, msg.Time)
-            this.addMessage('unknown command', HelpName)
-            return
-        }
-      } else {
-        this.startSpinner()
+      this.startSpinner()
 
-        this._send(msg).catch(err => {
-          console.error('send failed:', err)
-          this.stopSpinner()
-        })
-      }
+      this._send(msg).catch(err => {
+        console.error('send failed:', err)
+        this.stopSpinner()
+        this.addMessage('try again; send failed: ' + err, 'help')
+      })
     })
   }
 
@@ -254,23 +242,6 @@ class Chat {
         .forEach(msg => this.renderMessage(msg))
     } catch (e) {
       console.error('initial load failed:', e)
-    }
-  }
-
-  async showModelUsage() {
-    try {
-      const u = new URL('/models', this.subscribeUrl)
-
-      const res = await fetch(u.toString())
-      if (!res.ok) {
-        throw new Error(res.status)
-      }
-      const json = await res.json()
-      const keys = Object.keys(json)
-      this.addMessage('usage: /model modelname', HelpName)
-      this.addMessage('specify one of: ' + keys.join(' '), HelpName)
-    } catch (e) {
-      console.error('listing models failed:', e)
     }
   }
 

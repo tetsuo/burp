@@ -1,9 +1,6 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-
 	anthropic "github.com/anthropics/anthropic-sdk-go"
 	"github.com/openai/openai-go/v2"
 )
@@ -191,16 +188,6 @@ var providerFor = map[ChatModel]ChatProvider{
 	ChatModelOpenAIGPT3_5Turbo1106:                  ChatProviderOpenAI,
 	ChatModelOpenAIGPT3_5Turbo0125:                  ChatProviderOpenAI,
 	ChatModelOpenAIGPT3_5Turbo16k0613:               ChatProviderOpenAI,
-}
-
-var supportedModels []byte
-
-func init() {
-	j, err := json.MarshalIndent(providerFor, "", "\t")
-	if err != nil {
-		panic(fmt.Sprintf("JSON marshal error: %v", err))
-	}
-	supportedModels = j
 }
 
 var (

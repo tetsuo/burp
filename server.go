@@ -161,15 +161,6 @@ func (s *Server) serveAsk(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusAccepted)
 }
 
-func (s *Server) serveModels(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.Write(supportedModels)
-}
-
 func (s *Server) serveRoot(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -185,7 +176,6 @@ func (s *Server) serveRoot(w http.ResponseWriter, r *http.Request) {
 	<li><b><a href="/chat">/chat</a></b>: chat in a channel</li>
 	<li><b><a href="/wait">/wait</a></b>: long-poll 30s for next message (use ?id=&lt;channel&gt;&amp;after=&lt;RFC3339Nano&gt;)</li>
 	<li><b><a href="/recent">/recent</a></b>: recent messages in a channel</li>
-	<li><b><a href="/models">/models</a></b>: supported models</li>
 </ul></body></html>`)
 }
 
@@ -262,13 +252,9 @@ func (s *Server) serveChat(w http.ResponseWriter, r *http.Request) {
 
       <div class="cli">
         <div class="info">
-          <span id="time">[00:00:00]</span>
-          <span id="user">[anon/`)
-	io.WriteString(w, m)
-	io.WriteString(w, `]</span>
-          <span id="channel">[#`)
-	io.WriteString(w, id)
-	io.WriteString(w, `]</span>
+          <span id="time"></span>
+          <span id="user"></span>
+          <span id="channel"></span>
           <span id="spinner" class="spinner" aria-live="polite"></span>
         </div>
 
@@ -286,8 +272,8 @@ func (s *Server) serveChat(w http.ResponseWriter, r *http.Request) {
         model: '`)
 	io.WriteString(w, m)
 	io.WriteString(w, `',
-        subscribeUrl: new URL('', window.location.href),
-        publishUrl: new URL('', window.location.href),
+        subscribeUrl: new URL('/', window.location.href),
+        publishUrl: new URL('/', window.location.href),
       })
 
       chat.mountTo(document)
@@ -308,7 +294,6 @@ func (s *Server) Install(mux *http.ServeMux) {
 	mux.HandleFunc("/recent", serveRecent)
 	mux.HandleFunc("/chat", s.serveChat)
 	mux.HandleFunc("/ask", s.serveAsk)
-	mux.HandleFunc("/models", s.serveModels)
 }
 
 func isNonEmptyAlnum(s string) bool {
