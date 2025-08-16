@@ -310,7 +310,7 @@ class Chat {
   }
 
   async _recv(msg) {
-    this.addMessage(msg, AssistantName)
+    this.addMessage(msg, AssistantName, msg.Time)
   }
 }
 
