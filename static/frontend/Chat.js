@@ -98,7 +98,7 @@ class Chat {
     tick()
   }
 
-  addMessage(text, sender, timeISO = null) {
+  addMessage(text, sender, timeISO) {
     if (!text || !text.trim()) {
       return
     }
@@ -108,8 +108,7 @@ class Chat {
 
     const tspan = document.createElement('span')
     tspan.className = 'time'
-    // prefer server time if provided
-    const stamp = timeISO ? new Date(timeISO) : new Date()
+    const stamp = timeISO ? (timeISO instanceof Date ? timeISO : new Date(timeISO)) : new Date(this.lastTime)
     tspan.textContent = `[${pad(stamp.getHours())}:${pad(stamp.getMinutes())}:${pad(stamp.getSeconds())}]`
 
     const uspan = document.createElement('span')
@@ -159,7 +158,7 @@ class Chat {
       this._send(msg).catch(err => {
         console.error('send failed:', err)
         this.stopSpinner()
-        this.addMessage('try again; send failed: ' + err, 'help')
+        this.addMessage('try again; send failed: ' + err, HelpName, new Date())
       })
     })
   }
@@ -198,7 +197,7 @@ class Chat {
         this.msgBuffer = ''
         if (msg) {
           this._recv(msg).catch(err => {
-            this.addMessage(err.message || String(err), AssistantName, msg.Time)
+            this.addMessage(err.message || String(err), AssistantName)
           })
         }
         this.stopSpinner()
@@ -218,7 +217,7 @@ class Chat {
         if (!text) {
           continue
         }
-        this.addMessage(text, AssistantName, msg.Time)
+        this.addMessage(text, AssistantName)
       }
       return
     }
@@ -281,7 +280,7 @@ class Chat {
   }
 
   async _recv(msg) {
-    this.addMessage(msg, AssistantName, msg.Time)
+    this.addMessage(msg, AssistantName)
   }
 }
 
