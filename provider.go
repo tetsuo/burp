@@ -108,86 +108,86 @@ const (
 
 // providerFor is the registry of supported chat models -> provider.
 var providerFor = map[ChatModel]ChatProvider{
-	ChatModelClaude3_7SonnetLatest:      ChatProviderAnthropic,
-	ChatModelClaude3_7Sonnet20250219:    ChatProviderAnthropic,
-	ChatModelClaude3_5HaikuLatest:       ChatProviderAnthropic,
-	ChatModelClaude3_5Haiku20241022:     ChatProviderAnthropic,
-	ChatModelClaudeSonnet4_20250514:     ChatProviderAnthropic,
-	ChatModelClaudeSonnet4_0:            ChatProviderAnthropic,
-	ChatModelClaude4Sonnet20250514:      ChatProviderAnthropic,
-	ChatModelClaude3_5SonnetLatest:      ChatProviderAnthropic,
-	ChatModelClaude3_5Sonnet20241022:    ChatProviderAnthropic,
-	ChatModelClaude_3_5_Sonnet_20240620: ChatProviderAnthropic,
-	ChatModelClaudeOpus4_0:              ChatProviderAnthropic,
-	ChatModelClaudeOpus4_20250514:       ChatProviderAnthropic,
-	ChatModelClaude4Opus20250514:        ChatProviderAnthropic,
-	ChatModelClaudeOpus4_1_20250805:     ChatProviderAnthropic,
-	ChatModelClaude3OpusLatest:          ChatProviderAnthropic,
-	ChatModelClaude_3_Opus_20240229:     ChatProviderAnthropic,
-	ChatModelClaude_3_Haiku_20240307:    ChatProviderAnthropic,
+	ChatModelClaude3_7SonnetLatest:      ChatProviderAnthropic, // active, alias to latest Claude 3.7 Sonnet
+	ChatModelClaude3_7Sonnet20250219:    ChatProviderAnthropic, // active, Claude 3.7 Sonnet snapshot (2025-02-19)
+	ChatModelClaude3_5HaikuLatest:       ChatProviderAnthropic, // active, alias to latest Claude 3.5 Haiku
+	ChatModelClaude3_5Haiku20241022:     ChatProviderAnthropic, // active, Claude 3.5 Haiku snapshot (2024-10-22)
+	ChatModelClaudeSonnet4_20250514:     ChatProviderAnthropic, // active, Claude 4.0 Sonnet snapshot (2025-05-14)
+	ChatModelClaudeSonnet4_0:            ChatProviderAnthropic, // active, Claude 4.0 Sonnet base
+	ChatModelClaude4Sonnet20250514:      ChatProviderAnthropic, // active, alt identifier for Claude 4.0 Sonnet (2025-05-14)
+	ChatModelClaude3_5SonnetLatest:      ChatProviderAnthropic, // active, alias to latest Claude 3.5 Sonnet
+	ChatModelClaude3_5Sonnet20241022:    ChatProviderAnthropic, // active, Claude 3.5 Sonnet snapshot (2024-10-22)
+	ChatModelClaude_3_5_Sonnet_20240620: ChatProviderAnthropic, // active, Claude 3.5 Sonnet snapshot (2024-06-20)
+	ChatModelClaudeOpus4_0:              ChatProviderAnthropic, // active, Claude 4.0 Opus base
+	ChatModelClaudeOpus4_20250514:       ChatProviderAnthropic, // active, Claude 4.0 Opus snapshot (2025-05-14)
+	ChatModelClaude4Opus20250514:        ChatProviderAnthropic, // active, alt identifier for Claude 4.0 Opus (2025-05-14)
+	ChatModelClaudeOpus4_1_20250805:     ChatProviderAnthropic, // active, Claude 4.1 Opus snapshot (2025-08-05)
+	ChatModelClaude3OpusLatest:          ChatProviderAnthropic, // deprecated, alias for Claude 3 Opus (replaced by Claude 4 Opus)
+	ChatModelClaude_3_Opus_20240229:     ChatProviderAnthropic, // deprecated, Claude 3 Opus snapshot (2024-02-29)
+	ChatModelClaude_3_Haiku_20240307:    ChatProviderAnthropic, // deprecated, Claude 3 Haiku snapshot (2024-03-07)
 
-	ChatModelOpenAIGPT5:                             ChatProviderOpenAI,
-	ChatModelOpenAIGPT5Mini:                         ChatProviderOpenAI,
-	ChatModelOpenAIGPT5Nano:                         ChatProviderOpenAI,
-	ChatModelOpenAIGPT5_2025_08_07:                  ChatProviderOpenAI,
-	ChatModelOpenAIGPT5Mini2025_08_07:               ChatProviderOpenAI,
-	ChatModelOpenAIGPT5Nano2025_08_07:               ChatProviderOpenAI,
-	ChatModelOpenAIGPT5ChatLatest:                   ChatProviderOpenAI,
-	ChatModelOpenAIGPT4_1:                           ChatProviderOpenAI,
-	ChatModelOpenAIGPT4_1Mini:                       ChatProviderOpenAI,
-	ChatModelOpenAIGPT4_1Nano:                       ChatProviderOpenAI,
-	ChatModelOpenAIGPT4_1_2025_04_14:                ChatProviderOpenAI,
-	ChatModelOpenAIGPT4_1Mini2025_04_14:             ChatProviderOpenAI,
-	ChatModelOpenAIGPT4_1Nano2025_04_14:             ChatProviderOpenAI,
-	ChatModelOpenAIO4Mini:                           ChatProviderOpenAI,
-	ChatModelOpenAIO4Mini2025_04_16:                 ChatProviderOpenAI,
-	ChatModelOpenAIO3:                               ChatProviderOpenAI,
-	ChatModelOpenAIO3_2025_04_16:                    ChatProviderOpenAI,
-	ChatModelOpenAIO3Mini:                           ChatProviderOpenAI,
-	ChatModelOpenAIO3Mini2025_01_31:                 ChatProviderOpenAI,
-	ChatModelOpenAIO1:                               ChatProviderOpenAI,
-	ChatModelOpenAIO1_2024_12_17:                    ChatProviderOpenAI,
-	ChatModelOpenAIO1Preview:                        ChatProviderOpenAI,
-	ChatModelOpenAIO1Preview2024_09_12:              ChatProviderOpenAI,
-	ChatModelOpenAIO1Mini:                           ChatProviderOpenAI,
-	ChatModelOpenAIO1Mini2024_09_12:                 ChatProviderOpenAI,
-	ChatModelOpenAIGPT4o:                            ChatProviderOpenAI,
-	ChatModelOpenAIGPT4o2024_11_20:                  ChatProviderOpenAI,
-	ChatModelOpenAIGPT4o2024_08_06:                  ChatProviderOpenAI,
-	ChatModelOpenAIGPT4o2024_05_13:                  ChatProviderOpenAI,
-	ChatModelOpenAIGPT4oAudioPreview:                ChatProviderOpenAI,
-	ChatModelOpenAIGPT4oAudioPreview2024_10_01:      ChatProviderOpenAI,
-	ChatModelOpenAIGPT4oAudioPreview2024_12_17:      ChatProviderOpenAI,
-	ChatModelOpenAIGPT4oAudioPreview2025_06_03:      ChatProviderOpenAI,
-	ChatModelOpenAIGPT4oMiniAudioPreview:            ChatProviderOpenAI,
-	ChatModelOpenAIGPT4oMiniAudioPreview2024_12_17:  ChatProviderOpenAI,
-	ChatModelOpenAIGPT4oSearchPreview:               ChatProviderOpenAI,
-	ChatModelOpenAIGPT4oMiniSearchPreview:           ChatProviderOpenAI,
-	ChatModelOpenAIGPT4oSearchPreview2025_03_11:     ChatProviderOpenAI,
-	ChatModelOpenAIGPT4oMiniSearchPreview2025_03_11: ChatProviderOpenAI,
-	ChatModelOpenAIChatgpt4oLatest:                  ChatProviderOpenAI,
-	ChatModelOpenAICodexMiniLatest:                  ChatProviderOpenAI,
-	ChatModelOpenAIGPT4oMini:                        ChatProviderOpenAI,
-	ChatModelOpenAIGPT4oMini2024_07_18:              ChatProviderOpenAI,
-	ChatModelOpenAIGPT4Turbo:                        ChatProviderOpenAI,
-	ChatModelOpenAIGPT4Turbo2024_04_09:              ChatProviderOpenAI,
-	ChatModelOpenAIGPT4_0125Preview:                 ChatProviderOpenAI,
-	ChatModelOpenAIGPT4TurboPreview:                 ChatProviderOpenAI,
-	ChatModelOpenAIGPT4_1106Preview:                 ChatProviderOpenAI,
-	ChatModelOpenAIGPT4VisionPreview:                ChatProviderOpenAI,
-	ChatModelOpenAIGPT4:                             ChatProviderOpenAI,
-	ChatModelOpenAIGPT4_0314:                        ChatProviderOpenAI,
-	ChatModelOpenAIGPT4_0613:                        ChatProviderOpenAI,
-	ChatModelOpenAIGPT4_32k:                         ChatProviderOpenAI,
-	ChatModelOpenAIGPT4_32k0314:                     ChatProviderOpenAI,
-	ChatModelOpenAIGPT4_32k0613:                     ChatProviderOpenAI,
-	ChatModelOpenAIGPT3_5Turbo:                      ChatProviderOpenAI,
-	ChatModelOpenAIGPT3_5Turbo16k:                   ChatProviderOpenAI,
-	ChatModelOpenAIGPT3_5Turbo0301:                  ChatProviderOpenAI,
-	ChatModelOpenAIGPT3_5Turbo0613:                  ChatProviderOpenAI,
-	ChatModelOpenAIGPT3_5Turbo1106:                  ChatProviderOpenAI,
-	ChatModelOpenAIGPT3_5Turbo0125:                  ChatProviderOpenAI,
-	ChatModelOpenAIGPT3_5Turbo16k0613:               ChatProviderOpenAI,
+	ChatModelOpenAIGPT5:                             ChatProviderOpenAI, // active, current flagship (released Aug 2025)
+	ChatModelOpenAIGPT5Mini:                         ChatProviderOpenAI, // active, GPT-5 Mini tier
+	ChatModelOpenAIGPT5Nano:                         ChatProviderOpenAI, // active, GPT-5 Nano tier
+	ChatModelOpenAIGPT5_2025_08_07:                  ChatProviderOpenAI, // active, GPT-5 snapshot (2025-08-07)
+	ChatModelOpenAIGPT5Mini2025_08_07:               ChatProviderOpenAI, // active, GPT-5 Mini snapshot (2025-08-07)
+	ChatModelOpenAIGPT5Nano2025_08_07:               ChatProviderOpenAI, // active, GPT-5 Nano snapshot (2025-08-07)
+	ChatModelOpenAIGPT5ChatLatest:                   ChatProviderOpenAI, // active, alias to latest GPT-5 chat
+	ChatModelOpenAIGPT4_1:                           ChatProviderOpenAI, // active, GPT-4.1 family
+	ChatModelOpenAIGPT4_1Mini:                       ChatProviderOpenAI, // active, GPT-4.1 Mini
+	ChatModelOpenAIGPT4_1Nano:                       ChatProviderOpenAI, // active, GPT-4.1 Nano
+	ChatModelOpenAIGPT4_1_2025_04_14:                ChatProviderOpenAI, // active, GPT-4.1 snapshot (2025-04-14)
+	ChatModelOpenAIGPT4_1Mini2025_04_14:             ChatProviderOpenAI, // active, GPT-4.1 Mini snapshot
+	ChatModelOpenAIGPT4_1Nano2025_04_14:             ChatProviderOpenAI, // active, GPT-4.1 Nano snapshot
+	ChatModelOpenAIO4Mini:                           ChatProviderOpenAI, // active in API, pulled from ChatGPT UI after GPT-5 launch
+	ChatModelOpenAIO4Mini2025_04_16:                 ChatProviderOpenAI, // active, O4 Mini snapshot (2025-04-16)
+	ChatModelOpenAIO3:                               ChatProviderOpenAI, // active, O3
+	ChatModelOpenAIO3_2025_04_16:                    ChatProviderOpenAI, // active, O3 snapshot (2025-04-16)
+	ChatModelOpenAIO3Mini:                           ChatProviderOpenAI, // active, O3 Mini
+	ChatModelOpenAIO3Mini2025_01_31:                 ChatProviderOpenAI, // active, O3 Mini snapshot (2025-01-31)
+	ChatModelOpenAIO1:                               ChatProviderOpenAI, // active, O1
+	ChatModelOpenAIO1_2024_12_17:                    ChatProviderOpenAI, // active, O1 snapshot (2024-12-17)
+	ChatModelOpenAIO1Preview:                        ChatProviderOpenAI, // deprecated, removed Jul 2025
+	ChatModelOpenAIO1Preview2024_09_12:              ChatProviderOpenAI, // deprecated, removed Jul 2025
+	ChatModelOpenAIO1Mini:                           ChatProviderOpenAI, // deprecated, removal Oct 2025
+	ChatModelOpenAIO1Mini2024_09_12:                 ChatProviderOpenAI, // deprecated, removal Oct 2025
+	ChatModelOpenAIGPT4o:                            ChatProviderOpenAI, // active in API, pulled from ChatGPT UI after GPT-5 launch
+	ChatModelOpenAIGPT4o2024_11_20:                  ChatProviderOpenAI, // active, GPT-4o snapshot (2024-11-20)
+	ChatModelOpenAIGPT4o2024_08_06:                  ChatProviderOpenAI, // active, GPT-4o snapshot (2024-08-06)
+	ChatModelOpenAIGPT4o2024_05_13:                  ChatProviderOpenAI, // active, GPT-4o snapshot (2024-05-13)
+	ChatModelOpenAIGPT4oAudioPreview:                ChatProviderOpenAI, // active alias, but older 2024-10-01 snapshot deprecated
+	ChatModelOpenAIGPT4oAudioPreview2024_10_01:      ChatProviderOpenAI, // deprecated, audio-preview snapshot (2024-10-01)
+	ChatModelOpenAIGPT4oAudioPreview2024_12_17:      ChatProviderOpenAI, // active, audio-preview snapshot (2024-12-17)
+	ChatModelOpenAIGPT4oAudioPreview2025_06_03:      ChatProviderOpenAI, // active, audio-preview snapshot (2025-06-03)
+	ChatModelOpenAIGPT4oMiniAudioPreview:            ChatProviderOpenAI, // active, GPT-4o Mini audio-preview alias
+	ChatModelOpenAIGPT4oMiniAudioPreview2024_12_17:  ChatProviderOpenAI, // active, GPT-4o Mini audio-preview snapshot
+	ChatModelOpenAIGPT4oSearchPreview:               ChatProviderOpenAI, // active (preview model, subject to change)
+	ChatModelOpenAIGPT4oMiniSearchPreview:           ChatProviderOpenAI, // active (preview model, subject to change)
+	ChatModelOpenAIGPT4oSearchPreview2025_03_11:     ChatProviderOpenAI, // active, search-preview snapshot (2025-03-11)
+	ChatModelOpenAIGPT4oMiniSearchPreview2025_03_11: ChatProviderOpenAI, // active, mini search-preview snapshot (2025-03-11)
+	ChatModelOpenAIChatgpt4oLatest:                  ChatProviderOpenAI, // alias, not an API model (maps to latest GPT-4o)
+	ChatModelOpenAICodexMiniLatest:                  ChatProviderOpenAI, // deprecated, Codex family retired Mar 2023
+	ChatModelOpenAIGPT4oMini:                        ChatProviderOpenAI, // active, GPT-4o Mini
+	ChatModelOpenAIGPT4oMini2024_07_18:              ChatProviderOpenAI, // active, GPT-4o Mini snapshot (2024-07-18)
+	ChatModelOpenAIGPT4Turbo:                        ChatProviderOpenAI, // active, GPT-4 Turbo
+	ChatModelOpenAIGPT4Turbo2024_04_09:              ChatProviderOpenAI, // active, GA GPT-4 Turbo snapshot (2024-04-09)
+	ChatModelOpenAIGPT4_0125Preview:                 ChatProviderOpenAI, // deprecated, replaced by GPT-4 Turbo GA
+	ChatModelOpenAIGPT4TurboPreview:                 ChatProviderOpenAI, // deprecated, replaced by GPT-4 Turbo GA
+	ChatModelOpenAIGPT4_1106Preview:                 ChatProviderOpenAI, // deprecated, replaced by GPT-4 Turbo GA
+	ChatModelOpenAIGPT4VisionPreview:                ChatProviderOpenAI, // deprecated, superseded by GPT-4o multimodal
+	ChatModelOpenAIGPT4:                             ChatProviderOpenAI, // active, GPT-4 base family
+	ChatModelOpenAIGPT4_0314:                        ChatProviderOpenAI, // deprecated, retired mid-2024
+	ChatModelOpenAIGPT4_0613:                        ChatProviderOpenAI, // deprecated, retired mid-2024
+	ChatModelOpenAIGPT4_32k:                         ChatProviderOpenAI, // deprecated, 32k family retired mid-2024
+	ChatModelOpenAIGPT4_32k0314:                     ChatProviderOpenAI, // deprecated, retired mid-2024
+	ChatModelOpenAIGPT4_32k0613:                     ChatProviderOpenAI, // deprecated, retired mid-2024
+	ChatModelOpenAIGPT3_5Turbo:                      ChatProviderOpenAI, // active, GPT-3.5 Turbo family
+	ChatModelOpenAIGPT3_5Turbo16k:                   ChatProviderOpenAI, // deprecated, replaced when 16k became default
+	ChatModelOpenAIGPT3_5Turbo0301:                  ChatProviderOpenAI, // deprecated, retired 2024
+	ChatModelOpenAIGPT3_5Turbo0613:                  ChatProviderOpenAI, // deprecated, retired 2024
+	ChatModelOpenAIGPT3_5Turbo1106:                  ChatProviderOpenAI, // active, GPT-3.5 Turbo snapshot (2023-11-06)
+	ChatModelOpenAIGPT3_5Turbo0125:                  ChatProviderOpenAI, // active, GPT-3.5 Turbo snapshot (2024-01-25)
+	ChatModelOpenAIGPT3_5Turbo16k0613:               ChatProviderOpenAI, // deprecated, retired 2024
 }
 
 var (
