@@ -26,12 +26,14 @@ func main() {
 	if anthApiKey != "" {
 		c := anthropic.NewClient(anthropicoption.WithAPIKey(anthApiKey))
 		ac = &c
+		log.Print("enabling Anthropic models")
 	}
 
 	var oc *openai.Client
 	if openaiApiKey != "" {
 		c := openai.NewClient(openaioption.WithAPIKey(openaiApiKey))
 		oc = &c
+		log.Print("enabling OpenAI models")
 	}
 
 	server := &Server{
