@@ -24,7 +24,7 @@ func NewWorker(oc *openai.Client, ac *anthropic.Client) *Worker {
 //go:embed prompt.md
 var systemMsg string
 
-func (w *Worker) Send(ctx context.Context, id, userMsg string, model ChatModel) {
+func (w *Worker) Send(ctx context.Context, id, userMsg string, model ChatModel, extras messageParams) {
 	q := bbq.New[string](16)
 
 	go func(q *bbq.BBQ[string]) {
@@ -35,14 +35,14 @@ func (w *Worker) Send(ctx context.Context, id, userMsg string, model ChatModel) 
 				q.Close()
 				return
 			}
-			w.streamOpenAI(ctx, id, model, q)
+			w.streamOpenAI(ctx, id, model, extras, q)
 		case ChatProviderAnthropic:
 			if w.ac == nil {
 				log.Println("warn: anthropic not configured; aborting message")
 				q.Close()
 				return
 			}
-			w.streamAnthropic(ctx, id, model, q)
+			w.streamAnthropic(ctx, id, model, extras, q)
 		default:
 			log.Println("warn: unrecognized model; aborting message")
 			q.Close()
@@ -119,7 +119,7 @@ func historyToOpenAI(msgs []*Message) []openai.ChatCompletionMessageParamUnion {
 	return p
 }
 
-func (w *Worker) streamOpenAI(ctx context.Context, id string, model ChatModel, q *bbq.BBQ[string]) {
+func (w *Worker) streamOpenAI(ctx context.Context, id string, model ChatModel, extraParams messageParams, q *bbq.BBQ[string]) {
 	// pull last entries
 	hist := snapshotHistory(id, keepMin)
 
@@ -129,8 +129,14 @@ func (w *Worker) streamOpenAI(ctx context.Context, id string, model ChatModel, q
 	msgs = append(msgs, historyToOpenAI(hist)...)
 
 	params := openai.ChatCompletionNewParams{
-		Model:    openai.ChatModel(model),
-		Messages: msgs,
+		Model:               openai.ChatModel(model),
+		Messages:            msgs,
+		MaxCompletionTokens: openai.Int(extraParams.MaxTokens),
+		Temperature:         openai.Float(extraParams.Temperature),
+	}
+
+	if extraParams.TopP != nil {
+		params.TopP = openai.Float(*extraParams.TopP)
 	}
 
 	stream := w.oc.Chat.Completions.NewStreaming(ctx, params)
@@ -145,7 +151,7 @@ func (w *Worker) streamOpenAI(ctx context.Context, id string, model ChatModel, q
 	q.Close()
 }
 
-func (w *Worker) streamAnthropic(ctx context.Context, id string, model ChatModel, q *bbq.BBQ[string]) {
+func (w *Worker) streamAnthropic(ctx context.Context, id string, model ChatModel, extras messageParams, q *bbq.BBQ[string]) {
 	// Convert history to anthropic messages
 	hist := snapshotHistory(id, keepMin)
 	msgs := make([]anthropic.MessageParam, 0, len(hist)+1)
@@ -159,10 +165,19 @@ func (w *Worker) streamAnthropic(ctx context.Context, id string, model ChatModel
 	}
 
 	params := anthropic.MessageNewParams{
-		Model:     anthropic.Model(model),
-		MaxTokens: 1024,
-		Messages:  msgs,
-		System:    []anthropic.TextBlockParam{{Text: systemMsg}},
+		Model:       anthropic.Model(model),
+		MaxTokens:   extras.MaxTokens,
+		Temperature: anthropic.Float(extras.Temperature),
+		Messages:    msgs,
+		System:      []anthropic.TextBlockParam{{Text: systemMsg}},
+	}
+
+	if extras.TopP != nil {
+		params.TopP = anthropic.Float(*extras.TopP)
+	}
+
+	if extras.TopK != nil {
+		params.TopK = anthropic.Int(*extras.TopK)
 	}
 
 	stream := w.ac.Messages.NewStreaming(ctx, params)

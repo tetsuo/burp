@@ -71,6 +71,8 @@ button {
   padding-left: 0.5em;
   background-color: var(--primary-color);
   color: var(--inverted-primary-color);
+  display: flex;
+  gap: 0.5rem;
 }
 
 .chat .info .spinner {
@@ -80,6 +82,12 @@ button {
   margin-left: 0.25em;
   visibility: hidden;
   /* hidden when not spinning */
+}
+
+.chat .info .params {
+  display: flex;
+  gap: 0.875rem;
+  margin-left: 0.1875rem;
 }
 
 .chat .lines {
@@ -101,6 +109,10 @@ button {
 
 .chat .lines .line {
   padding: 0.096em 0.5em;
+}
+
+.chat .lines .line:hover {
+  background-color: #eef3ff;
 }
 
 .chat .lines .line .user {

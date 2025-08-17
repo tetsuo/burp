@@ -5,6 +5,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/tetsuo/burp/static"
@@ -22,7 +23,7 @@ func (s *Server) serveWait(w http.ResponseWriter, r *http.Request) {
 
 	id := r.FormValue("id")
 	if !isNonEmptyAlnum(id) {
-		http.Error(w, "id cannot be empty; only letters and numbers allowed", http.StatusBadRequest)
+		http.Error(w, "id cannot be blank; only letters and numbers allowed", http.StatusBadRequest)
 		return
 	}
 
@@ -69,7 +70,7 @@ func serveRecent(w http.ResponseWriter, r *http.Request) {
 
 	id := r.FormValue("id")
 	if !isNonEmptyAlnum(id) {
-		http.Error(w, "id cannot be empty; only letters and numbers allowed", http.StatusBadRequest)
+		http.Error(w, "id cannot be blank; only letters and numbers allowed", http.StatusBadRequest)
 		return
 	}
 
@@ -113,14 +114,14 @@ func (s *Server) serveAsk(w http.ResponseWriter, r *http.Request) {
 
 	id := r.FormValue("id")
 	if !isNonEmptyAlnum(id) {
-		http.Error(w, "id cannot be empty; only letters and numbers allowed", http.StatusBadRequest)
+		http.Error(w, "id cannot be blank; only letters and numbers allowed", http.StatusBadRequest)
 		return
 	}
 
 	// Model choice (string, <=140 chars); validate against registry
 	m := r.FormValue("model")
 	if m == "" {
-		http.Error(w, "model cannot be empty", http.StatusBadRequest)
+		http.Error(w, "model cannot be blank", http.StatusBadRequest)
 		return
 	}
 	if len(m) > 140 {
@@ -130,17 +131,35 @@ func (s *Server) serveAsk(w http.ResponseWriter, r *http.Request) {
 
 	model := ChatModel(m)
 	if provider, exists := providerFor[model]; !exists {
-		http.Error(w, "unrecognized model", http.StatusBadRequest)
+		http.Error(w, "unknown model", http.StatusBadRequest)
 		return
-	} else if provider == ChatProviderAnthropic && s.wkr.ac == nil {
-		http.Error(w, "model not supported", http.StatusServiceUnavailable)
-		return
-	} else if provider == ChatProviderOpenAI && s.wkr.oc == nil {
-		http.Error(w, "model not supported", http.StatusServiceUnavailable)
-		return
+	} else if provider == ChatProviderAnthropic {
+		if s.wkr.ac == nil {
+			http.Error(w, "model not supported", http.StatusServiceUnavailable)
+			return
+		}
+		params, reason := parseAnthropicParams(r, model)
+		if reason != "" {
+			http.Error(w, reason, http.StatusBadRequest)
+			return
+		}
+		s.publishMessage(w, r, model, id, params)
+	} else if provider == ChatProviderOpenAI {
+		if s.wkr.oc == nil {
+			http.Error(w, "model not supported", http.StatusServiceUnavailable)
+			return
+		}
+		params, reason := parseOpenAIParams(r, model)
+		if reason != "" {
+			http.Error(w, reason, http.StatusBadRequest)
+			return
+		}
+		s.publishMessage(w, r, model, id, params)
 	}
+}
 
-	b, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 32<<10))
+func (s *Server) publishMessage(w http.ResponseWriter, r *http.Request, model ChatModel, id string, params messageParams) {
+	b, err := io.ReadAll(http.MaxBytesReader(w, r.Body, modelMaxInputChars[model]))
 	if err != nil {
 		w.WriteHeader(http.StatusRequestEntityTooLarge)
 		return
@@ -155,7 +174,7 @@ func (s *Server) serveAsk(w http.ResponseWriter, r *http.Request) {
 	})
 
 	// kick off work in the background
-	go s.wkr.Send(context.Background(), id, body, model)
+	go s.wkr.Send(context.Background(), id, body, model, params)
 
 	w.WriteHeader(http.StatusAccepted)
 }
@@ -186,7 +205,7 @@ func (s *Server) serveChat(w http.ResponseWriter, r *http.Request) {
 
 	id := r.FormValue("id")
 	if !isNonEmptyAlnum(id) {
-		http.Error(w, "id cannot be empty; only letters and numbers allowed", http.StatusBadRequest)
+		http.Error(w, "id cannot be blank; only letters and numbers allowed", http.StatusBadRequest)
 		return
 	}
 
@@ -205,11 +224,16 @@ func (s *Server) serveChat(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	var params messageParams
+
 	switch provider {
 	case 0:
-		model = FallbackOpenAIChatModel
-		if s.wkr.oc == nil {
+		if s.wkr.oc != nil {
+			model = FallbackOpenAIChatModel // default when both clients exist
+			params, _ = parseOpenAIParams(r, model)
+		} else {
 			model = FallbackAnthropicChatModel
+			params, _ = parseAnthropicParams(r, model)
 		}
 	case ChatProviderAnthropic:
 		if s.wkr.ac == nil {
@@ -218,6 +242,7 @@ func (s *Server) serveChat(w http.ResponseWriter, r *http.Request) {
 		} else if model == "" {
 			model = FallbackAnthropicChatModel
 		}
+		params, _ = parseAnthropicParams(r, model)
 	case ChatProviderOpenAI:
 		if s.wkr.oc == nil {
 			http.Error(w, "model not supported", http.StatusServiceUnavailable)
@@ -225,6 +250,7 @@ func (s *Server) serveChat(w http.ResponseWriter, r *http.Request) {
 		} else if model == "" {
 			model = FallbackOpenAIChatModel
 		}
+		params, _ = parseOpenAIParams(r, model)
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -246,6 +272,7 @@ func (s *Server) serveChat(w http.ResponseWriter, r *http.Request) {
           <span id="time"></span>
           <span id="user"></span>
           <span id="channel"></span>
+					<span id="params" class="params"></span>
           <span id="spinner" class="spinner" aria-live="polite"></span>
         </div>
 
@@ -263,11 +290,30 @@ func (s *Server) serveChat(w http.ResponseWriter, r *http.Request) {
         model: '`)
 	io.WriteString(w, string(model))
 	io.WriteString(w, `',
+        temperature: `)
+	io.WriteString(w, strconv.FormatFloat(params.Temperature, 'g', 17, 64))
+	io.WriteString(w, `,
+        maxTokens: `)
+	io.WriteString(w, strconv.FormatInt(params.MaxTokens, 10))
+
+	if params.TopP != nil {
+		io.WriteString(w, `,
+        topP: `)
+		io.WriteString(w, strconv.FormatFloat(*params.TopP, 'g', 17, 64))
+	}
+
+	if params.TopK != nil {
+		io.WriteString(w, `,
+        topK: `)
+		io.WriteString(w, strconv.FormatInt(*params.TopK, 10))
+	}
+
+	io.WriteString(w, `,
         subscribeUrl: new URL('/', window.location.href),
         publishUrl: new URL('/', window.location.href),
-      })
+      });
 
-      chat.mountTo(document)
+      chat.mountTo(document);
     </script>
   </body>
 </html>`)

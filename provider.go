@@ -190,9 +190,205 @@ var providerFor = map[ChatModel]ChatProvider{
 	ChatModelOpenAIGPT3_5Turbo16k0613:               ChatProviderOpenAI, // deprecated, retired 2024
 }
 
-var (
+const (
 	// FallbackOpenAIChatModel is used when model not specified.
 	FallbackOpenAIChatModel ChatModel = ChatModelOpenAIGPT5Nano
 	// FallbackAnthropicChatModel is used when model not specified.
 	FallbackAnthropicChatModel ChatModel = ChatModelClaude3_5HaikuLatest
 )
+
+var modelMaxOutputTokens = map[ChatModel]int64{
+	// Claude 3.7 Sonnet
+	ChatModelClaude3_7SonnetLatest:   64_000,
+	ChatModelClaude3_7Sonnet20250219: 64_000,
+
+	// Claude 3.5
+	ChatModelClaude3_5HaikuLatest:       8_192,
+	ChatModelClaude3_5Haiku20241022:     8_192,
+	ChatModelClaude3_5SonnetLatest:      8_000,
+	ChatModelClaude3_5Sonnet20241022:    8_000,
+	ChatModelClaude_3_5_Sonnet_20240620: 8_000,
+
+	// Claude 4.0 / 4.1
+	ChatModelClaudeSonnet4_20250514: 64_000,
+	ChatModelClaudeSonnet4_0:        64_000,
+	ChatModelClaude4Sonnet20250514:  64_000,
+	ChatModelClaudeOpus4_0:          32_000,
+	ChatModelClaudeOpus4_20250514:   32_000,
+	ChatModelClaude4Opus20250514:    32_000,
+	ChatModelClaudeOpus4_1_20250805: 32_000,
+
+	// Claude 3 (deprecated)
+	ChatModelClaude3OpusLatest:       4_000,
+	ChatModelClaude_3_Opus_20240229:  4_000,
+	ChatModelClaude_3_Haiku_20240307: 4_096,
+
+	// GPT-5 family (assume same as GPT-4.1 until doc updates)
+	ChatModelOpenAIGPT5:               32_000,
+	ChatModelOpenAIGPT5Mini:           32_000,
+	ChatModelOpenAIGPT5Nano:           32_000,
+	ChatModelOpenAIGPT5_2025_08_07:    32_000,
+	ChatModelOpenAIGPT5Mini2025_08_07: 32_000,
+	ChatModelOpenAIGPT5Nano2025_08_07: 32_000,
+	ChatModelOpenAIGPT5ChatLatest:     32_000,
+
+	// GPT-4.1 family
+	ChatModelOpenAIGPT4_1:               32_000,
+	ChatModelOpenAIGPT4_1Mini:           32_000,
+	ChatModelOpenAIGPT4_1Nano:           32_000,
+	ChatModelOpenAIGPT4_1_2025_04_14:    32_000,
+	ChatModelOpenAIGPT4_1Mini2025_04_14: 32_000,
+	ChatModelOpenAIGPT4_1Nano2025_04_14: 32_000,
+
+	// O-series
+	ChatModelOpenAIO4Mini:              100_000,
+	ChatModelOpenAIO4Mini2025_04_16:    100_000,
+	ChatModelOpenAIO3:                  100_000,
+	ChatModelOpenAIO3_2025_04_16:       100_000,
+	ChatModelOpenAIO3Mini:              100_000,
+	ChatModelOpenAIO3Mini2025_01_31:    100_000,
+	ChatModelOpenAIO1:                  100_000,
+	ChatModelOpenAIO1_2024_12_17:       100_000,
+	ChatModelOpenAIO1Preview:           32_000,
+	ChatModelOpenAIO1Preview2024_09_12: 32_000,
+	ChatModelOpenAIO1Mini:              65_536,
+	ChatModelOpenAIO1Mini2024_09_12:    65_536,
+
+	// GPT-4o + Mini + Turbo
+	ChatModelOpenAIGPT4o:                            16_000,
+	ChatModelOpenAIGPT4o2024_11_20:                  16_000,
+	ChatModelOpenAIGPT4o2024_08_06:                  16_000,
+	ChatModelOpenAIGPT4o2024_05_13:                  16_000,
+	ChatModelOpenAIGPT4oAudioPreview:                16_000,
+	ChatModelOpenAIGPT4oAudioPreview2024_10_01:      16_000,
+	ChatModelOpenAIGPT4oAudioPreview2024_12_17:      16_000,
+	ChatModelOpenAIGPT4oAudioPreview2025_06_03:      16_000,
+	ChatModelOpenAIGPT4oMiniAudioPreview:            16_000,
+	ChatModelOpenAIGPT4oMiniAudioPreview2024_12_17:  16_000,
+	ChatModelOpenAIGPT4oSearchPreview:               16_000,
+	ChatModelOpenAIGPT4oMiniSearchPreview:           16_000,
+	ChatModelOpenAIGPT4oSearchPreview2025_03_11:     16_000,
+	ChatModelOpenAIGPT4oMiniSearchPreview2025_03_11: 16_000,
+	ChatModelOpenAIChatgpt4oLatest:                  16_000,
+	ChatModelOpenAIGPT4oMini:                        16_000,
+	ChatModelOpenAIGPT4oMini2024_07_18:              16_000,
+	ChatModelOpenAIGPT4Turbo:                        16_000,
+	ChatModelOpenAIGPT4Turbo2024_04_09:              16_000,
+	ChatModelOpenAIGPT4_0125Preview:                 16_000,
+	ChatModelOpenAIGPT4TurboPreview:                 16_000,
+	ChatModelOpenAIGPT4_1106Preview:                 16_000,
+	ChatModelOpenAIGPT4VisionPreview:                16_000,
+
+	// GPT-4 base
+	ChatModelOpenAIGPT4:         16_000,
+	ChatModelOpenAIGPT4_0314:    16_000,
+	ChatModelOpenAIGPT4_0613:    16_000,
+	ChatModelOpenAIGPT4_32k:     16_000, // OpenAI docs: 32k context, but max output capped at 16k
+	ChatModelOpenAIGPT4_32k0314: 16_000,
+	ChatModelOpenAIGPT4_32k0613: 16_000,
+
+	// GPT-3.5
+	ChatModelOpenAIGPT3_5Turbo:        4_000,
+	ChatModelOpenAIGPT3_5Turbo16k:     4_000, // 16k ctx, still 4k out
+	ChatModelOpenAIGPT3_5Turbo0301:    4_000,
+	ChatModelOpenAIGPT3_5Turbo0613:    4_000,
+	ChatModelOpenAIGPT3_5Turbo1106:    4_000,
+	ChatModelOpenAIGPT3_5Turbo0125:    4_000,
+	ChatModelOpenAIGPT3_5Turbo16k0613: 4_000,
+}
+
+var modelMaxInputChars = map[ChatModel]int64{
+	// Anthropic ~200k ctx
+	ChatModelClaude3_7SonnetLatest:   680_000,
+	ChatModelClaude3_7Sonnet20250219: 680_000,
+	ChatModelClaudeSonnet4_20250514:  680_000,
+	ChatModelClaudeSonnet4_0:         680_000,
+	ChatModelClaude4Sonnet20250514:   680_000,
+	ChatModelClaudeOpus4_0:           680_000,
+	ChatModelClaudeOpus4_20250514:    680_000,
+	ChatModelClaude4Opus20250514:     680_000,
+	ChatModelClaudeOpus4_1_20250805:  680_000,
+	ChatModelClaude3OpusLatest:       680_000,
+	ChatModelClaude_3_Opus_20240229:  680_000,
+
+	// Anthropic Haiku ~64k ctx
+	ChatModelClaude3_5HaikuLatest:    250_000,
+	ChatModelClaude3_5Haiku20241022:  250_000,
+	ChatModelClaude_3_Haiku_20240307: 250_000,
+
+	// Anthropic 3.5 Sonnet ~200k ctx
+	ChatModelClaude3_5SonnetLatest:      680_000,
+	ChatModelClaude3_5Sonnet20241022:    680_000,
+	ChatModelClaude_3_5_Sonnet_20240620: 680_000,
+
+	// OpenAI 128k ctx families
+	ChatModelOpenAIGPT5:                 392_000,
+	ChatModelOpenAIGPT5Mini:             392_000,
+	ChatModelOpenAIGPT5Nano:             392_000,
+	ChatModelOpenAIGPT5_2025_08_07:      392_000,
+	ChatModelOpenAIGPT5Mini2025_08_07:   392_000,
+	ChatModelOpenAIGPT5Nano2025_08_07:   392_000,
+	ChatModelOpenAIGPT5ChatLatest:       392_000,
+	ChatModelOpenAIGPT4_1:               392_000,
+	ChatModelOpenAIGPT4_1Mini:           392_000,
+	ChatModelOpenAIGPT4_1Nano:           392_000,
+	ChatModelOpenAIGPT4_1_2025_04_14:    392_000,
+	ChatModelOpenAIGPT4_1Mini2025_04_14: 392_000,
+	ChatModelOpenAIGPT4_1Nano2025_04_14: 392_000,
+	ChatModelOpenAIO4Mini:               392_000,
+	ChatModelOpenAIO4Mini2025_04_16:     392_000,
+	ChatModelOpenAIO3:                   392_000,
+	ChatModelOpenAIO3_2025_04_16:        392_000,
+	ChatModelOpenAIO3Mini:               392_000,
+	ChatModelOpenAIO3Mini2025_01_31:     392_000,
+	ChatModelOpenAIO1:                   392_000,
+	ChatModelOpenAIO1_2024_12_17:        392_000,
+	ChatModelOpenAIO1Preview:            392_000,
+	ChatModelOpenAIO1Preview2024_09_12:  392_000,
+	ChatModelOpenAIO1Mini:               392_000,
+	ChatModelOpenAIO1Mini2024_09_12:     392_000,
+
+	// GPT-4o family & Turbo
+	ChatModelOpenAIGPT4o:                            392_000,
+	ChatModelOpenAIGPT4o2024_11_20:                  392_000,
+	ChatModelOpenAIGPT4o2024_08_06:                  392_000,
+	ChatModelOpenAIGPT4o2024_05_13:                  392_000,
+	ChatModelOpenAIGPT4oAudioPreview:                392_000,
+	ChatModelOpenAIGPT4oAudioPreview2024_10_01:      392_000,
+	ChatModelOpenAIGPT4oAudioPreview2024_12_17:      392_000,
+	ChatModelOpenAIGPT4oAudioPreview2025_06_03:      392_000,
+	ChatModelOpenAIGPT4oMiniAudioPreview:            392_000,
+	ChatModelOpenAIGPT4oMiniAudioPreview2024_12_17:  392_000,
+	ChatModelOpenAIGPT4oSearchPreview:               392_000,
+	ChatModelOpenAIGPT4oMiniSearchPreview:           392_000,
+	ChatModelOpenAIGPT4oSearchPreview2025_03_11:     392_000,
+	ChatModelOpenAIGPT4oMiniSearchPreview2025_03_11: 392_000,
+	ChatModelOpenAIChatgpt4oLatest:                  392_000,
+	ChatModelOpenAIGPT4oMini:                        392_000,
+	ChatModelOpenAIGPT4oMini2024_07_18:              392_000,
+	ChatModelOpenAIGPT4Turbo:                        392_000,
+	ChatModelOpenAIGPT4Turbo2024_04_09:              392_000,
+	ChatModelOpenAIGPT4_0125Preview:                 392_000,
+	ChatModelOpenAIGPT4TurboPreview:                 392_000,
+	ChatModelOpenAIGPT4_1106Preview:                 392_000,
+	ChatModelOpenAIGPT4VisionPreview:                392_000,
+
+	// GPT-4 (8k)
+	ChatModelOpenAIGPT4:      24_500,
+	ChatModelOpenAIGPT4_0314: 24_500,
+	ChatModelOpenAIGPT4_0613: 24_500,
+
+	// GPT-4-32k
+	ChatModelOpenAIGPT4_32k:     98_000,
+	ChatModelOpenAIGPT4_32k0314: 98_000,
+	ChatModelOpenAIGPT4_32k0613: 98_000,
+
+	// GPT-3.5 family
+	ChatModelOpenAIGPT3_5Turbo:        12_250,
+	ChatModelOpenAIGPT3_5Turbo16k:     44_500,
+	ChatModelOpenAIGPT3_5Turbo0301:    12_250,
+	ChatModelOpenAIGPT3_5Turbo0613:    12_250,
+	ChatModelOpenAIGPT3_5Turbo1106:    12_250,
+	ChatModelOpenAIGPT3_5Turbo0125:    12_250,
+	ChatModelOpenAIGPT3_5Turbo16k0613: 44_500,
+}
