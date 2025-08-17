@@ -93,27 +93,6 @@ class Chat {
     }
   }
 
-  setParams1(temperature = this.temperature, maxTokens = this.maxTokens, topP = this.topP, topK = this.topK) {
-    // TODO: validate
-    this.temperature = temperature
-    this.maxTokens = maxTokens
-    this.topP = topP
-    this.topK = topK
-    if (this.elements.paramsLabel) {
-      let s = '🔥 ' + parseFloat(this.temperature.toFixed(7))
-      if (Number.isFinite(this.topP)) {
-        s += ' 🔮 ' + parseFloat(this.topP.toFixed(7))
-      }
-      if (Number.isInteger(this.topK)) {
-        s += ' 🔢 ' + this.topK
-      }
-      if (Number.isInteger(this.maxTokens)) {
-        s += ' ⏳ ' + formatMaxTokens(this.maxTokens)
-      }
-      this.elements.paramsLabel.textContent = `[${s}]`
-    }
-  }
-
   mountTo(root = document) {
     this.elements = {
       chatLines: root.getElementById('chat-lines'),
