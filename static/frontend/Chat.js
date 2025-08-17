@@ -2,7 +2,7 @@ const AssistantMessage = 1
 const UserMessage = 2
 
 const AssistantName = 'burp'
-const HelpName = 'help'
+const StatusName = '!status'
 
 class Chat {
   constructor({ nickname = 'anon', channel = 'status', model, subscribeUrl, publishUrl } = {}) {
@@ -115,7 +115,7 @@ class Chat {
     uspan.className = 'user'
     if (sender === AssistantName) {
       uspan.className = 'assistant'
-    } else if (sender === HelpName) {
+    } else if (sender === StatusName) {
       uspan.className = 'help'
     }
     uspan.textContent = `<${sender}>`
@@ -155,11 +155,25 @@ class Chat {
 
       this.startSpinner()
 
-      this._send(msg).catch(err => {
-        console.error('send failed:', err)
-        this.stopSpinner()
-        this.addMessage('try again; send failed: ' + err, HelpName, new Date())
-      })
+      this._send(msg)
+        .then(res => {
+          if (!res.ok) {
+            this.stopSpinner()
+            this.addMessage(
+              ['failed to send message:', res.statusText.toLowerCase(), String(res.status)].join(' '),
+              StatusName,
+              new Date(),
+            )
+          }
+        })
+        .catch(err => {
+          this.stopSpinner()
+          this.addMessage(
+            'failed to send message: ' + (err instanceof Error ? err.message : String(err)).toLowerCase(),
+            StatusName,
+            new Date(),
+          )
+        })
     })
   }
 
@@ -232,7 +246,12 @@ class Chat {
 
       const res = await fetch(u.toString())
       if (!res.ok) {
-        throw new Error(res.status)
+        this.addMessage(
+          ['failed to retrieve chat history:', res.statusText.toLowerCase(), String(res.status)].join(' '),
+          StatusName,
+          new Date(),
+        )
+        return
       }
       const messages = await res.json()
       messages
@@ -240,7 +259,11 @@ class Chat {
         .reverse()
         .forEach(msg => this.renderMessage(msg))
     } catch (e) {
-      console.error('initial load failed:', e)
+      this.addMessage(
+        'failed to retrieve chat history: ' + (err instanceof Error ? err.message : String(err)).toLowerCase(),
+        StatusName,
+        new Date(),
+      )
     }
   }
 
@@ -258,10 +281,14 @@ class Chat {
           throw new Error('status ' + res.status)
         }
 
-        const ev = await res.json()
-        this.renderMessage(ev)
+        const msg = await res.json()
+        this.renderMessage(msg)
       } catch (err) {
-        console.error('poll error; will retry in 5s', err)
+        this.addMessage(
+          'poll error: ' + (err instanceof Error ? err.message : String(err)).toLowerCase() + '; will retry in 5s',
+          StatusName,
+          new Date(),
+        )
         await new Promise(r => setTimeout(r, 5000))
       }
     }
