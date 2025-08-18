@@ -2,6 +2,8 @@
 
 burp is a chat server that connects clients to OpenAI and Anthropic APIs. It provides HTTP endpoints and a browser-based chat frontend.
 
+![burp Screenshot](./Screenshot.png)
+
 ## Install
 
 Install it with:
