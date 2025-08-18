@@ -21,9 +21,9 @@ func (s *Server) serveWait(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := r.FormValue("id")
-	if !isNonEmptyAlnum(id) {
-		http.Error(w, "id cannot be blank; only letters and numbers allowed", http.StatusBadRequest)
+	id, reason := parseID(r)
+	if reason != "" {
+		http.Error(w, reason, http.StatusBadRequest)
 		return
 	}
 
@@ -66,11 +66,9 @@ func serveRecent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-
-	id := r.FormValue("id")
-	if !isNonEmptyAlnum(id) {
-		http.Error(w, "id cannot be blank; only letters and numbers allowed", http.StatusBadRequest)
+	id, reason := parseID(r)
+	if reason != "" {
+		http.Error(w, reason, http.StatusBadRequest)
 		return
 	}
 
@@ -83,6 +81,8 @@ func serveRecent(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
 	mu.Lock()
 
@@ -112,53 +112,12 @@ func (s *Server) serveAsk(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := r.FormValue("id")
-	if !isNonEmptyAlnum(id) {
-		http.Error(w, "id cannot be blank; only letters and numbers allowed", http.StatusBadRequest)
+	id, model, _, params, reason := s.parseRequest(r)
+	if reason != "" {
+		http.Error(w, reason, http.StatusBadRequest)
 		return
 	}
 
-	// Model choice (string, <=140 chars); validate against registry
-	m := r.FormValue("model")
-	if m == "" {
-		http.Error(w, "model cannot be blank", http.StatusBadRequest)
-		return
-	}
-	if len(m) > 140 {
-		http.Error(w, "model must be <= 140 characters", http.StatusBadRequest)
-		return
-	}
-
-	model := ChatModel(m)
-	if provider, exists := providerFor[model]; !exists {
-		http.Error(w, "unknown model", http.StatusBadRequest)
-		return
-	} else if provider == ChatProviderAnthropic {
-		if s.wkr.ac == nil {
-			http.Error(w, "model not supported", http.StatusServiceUnavailable)
-			return
-		}
-		params, reason := parseAnthropicParams(r, model)
-		if reason != "" {
-			http.Error(w, reason, http.StatusBadRequest)
-			return
-		}
-		s.publishMessage(w, r, model, id, params)
-	} else if provider == ChatProviderOpenAI {
-		if s.wkr.oc == nil {
-			http.Error(w, "model not supported", http.StatusServiceUnavailable)
-			return
-		}
-		params, reason := parseOpenAIParams(r, model)
-		if reason != "" {
-			http.Error(w, reason, http.StatusBadRequest)
-			return
-		}
-		s.publishMessage(w, r, model, id, params)
-	}
-}
-
-func (s *Server) publishMessage(w http.ResponseWriter, r *http.Request, model ChatModel, id string, params messageParams) {
 	b, err := io.ReadAll(http.MaxBytesReader(w, r.Body, modelMaxInputChars[model]))
 	if err != nil {
 		w.WriteHeader(http.StatusRequestEntityTooLarge)
@@ -179,78 +138,16 @@ func (s *Server) publishMessage(w http.ResponseWriter, r *http.Request, model Ch
 	w.WriteHeader(http.StatusAccepted)
 }
 
-func (s *Server) serveRoot(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-
-	if r.URL.Path != "/" {
-		http.NotFound(w, r)
-		return
-	}
-	io.WriteString(w, `<html><body><h1>chathelper</h1>
-<ul>
-  <li><b><a href="/chat">/chat</a></b>: chat in a channel</li>
-  <li><b><a href="/wait">/wait</a></b>: long-poll 30s for next message (use ?id=&lt;channel&gt;&amp;after=&lt;RFC3339Nano&gt;)</li>
-  <li><b><a href="/recent">/recent</a></b>: recent messages in a channel</li>
-</ul></body></html>`)
-}
-
 func (s *Server) serveChat(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
 
-	id := r.FormValue("id")
-	if !isNonEmptyAlnum(id) {
-		http.Error(w, "id cannot be blank; only letters and numbers allowed", http.StatusBadRequest)
+	id, model, _, params, reason := s.parseRequest(r)
+	if reason != "" {
+		http.Error(w, reason, http.StatusBadRequest)
 		return
-	}
-
-	var (
-		model    ChatModel
-		provider ChatProvider
-	)
-
-	// Model choice (string, <=140 chars); validate against registry
-	m := r.FormValue("model")
-	if m != "" && len(m) <= 140 {
-		model = ChatModel(m)
-		var exists bool
-		if provider, exists = providerFor[model]; !exists {
-			model = ""
-		}
-	}
-
-	var params messageParams
-
-	switch provider {
-	case 0:
-		if s.wkr.oc != nil {
-			model = FallbackOpenAIChatModel // default when both clients exist
-			params, _ = parseOpenAIParams(r, model)
-		} else {
-			model = FallbackAnthropicChatModel
-			params, _ = parseAnthropicParams(r, model)
-		}
-	case ChatProviderAnthropic:
-		if s.wkr.ac == nil {
-			http.Error(w, "model not supported", http.StatusServiceUnavailable)
-			return
-		} else if model == "" {
-			model = FallbackAnthropicChatModel
-		}
-		params, _ = parseAnthropicParams(r, model)
-	case ChatProviderOpenAI:
-		if s.wkr.oc == nil {
-			http.Error(w, "model not supported", http.StatusServiceUnavailable)
-			return
-		} else if model == "" {
-			model = FallbackOpenAIChatModel
-		}
-		params, _ = parseOpenAIParams(r, model)
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -319,6 +216,24 @@ func (s *Server) serveChat(w http.ResponseWriter, r *http.Request) {
 </html>`)
 }
 
+func (s *Server) serveRoot(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	if r.URL.Path != "/" {
+		http.NotFound(w, r)
+		return
+	}
+	io.WriteString(w, `<html><body><h1>burp</h1>
+<ul>
+  <li><b><a href="/chat">/chat</a></b>: chat in a channel</li>
+  <li><b><a href="/wait">/wait</a></b>: long-poll 30s for next message (use ?id=&lt;channel&gt;&amp;after=&lt;RFC3339Nano&gt;)</li>
+  <li><b><a href="/recent">/recent</a></b>: recent messages in a channel</li>
+</ul></body></html>`)
+}
+
 func (s *Server) Install(mux *http.ServeMux) {
 	mux.Handle("/static/",
 		http.StripPrefix("/static",
@@ -331,19 +246,4 @@ func (s *Server) Install(mux *http.ServeMux) {
 	mux.HandleFunc("/recent", serveRecent)
 	mux.HandleFunc("/chat", s.serveChat)
 	mux.HandleFunc("/ask", s.serveAsk)
-}
-
-func isNonEmptyAlnum(s string) bool {
-	if s == "" {
-		return false
-	}
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		if !(c >= 'a' && c <= 'z') &&
-			!(c >= 'A' && c <= 'Z') &&
-			!(c >= '0' && c <= '9') {
-			return false
-		}
-	}
-	return true
 }

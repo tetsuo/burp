@@ -14,6 +14,68 @@ type messageParams struct {
 	TopK *int64 // Anthropic only; always nil for OpenAI
 }
 
+func (s *Server) parseRequest(r *http.Request) (id string, model ChatModel, provider ChatProvider, params messageParams, reason string) {
+	id, reason = parseID(r)
+	if reason != "" {
+		return
+	}
+
+	model, provider, reason = parseModel(r)
+	if reason != "" {
+		return
+	}
+
+	switch provider {
+	case 0:
+		reason = "model not supported"
+	case ChatProviderAnthropic:
+		if s.wkr.ac == nil {
+			reason = "model not supported"
+			return
+		}
+		params, reason = parseAnthropicParams(r, model)
+		if reason != "" {
+			return
+		}
+	case ChatProviderOpenAI:
+		if s.wkr.oc == nil {
+			reason = "model not supported"
+			return
+		}
+		params, reason = parseOpenAIParams(r, model)
+		if reason != "" {
+			return
+		}
+	}
+	return
+}
+
+func parseID(r *http.Request) (string, string) {
+	id := r.FormValue("id")
+	if id == "" {
+		return "", "id cannot be blank"
+	}
+	if len(id) > 32 {
+		return "", "id must be <= 32 characters"
+	}
+	if !isNonEmptyAlnum(id) {
+		return "", "id must be alphanumeric"
+	}
+	return id, ""
+}
+
+func parseModel(r *http.Request) (ChatModel, ChatProvider, string) {
+	m := r.FormValue("model")
+	if m == "" {
+		return "", 0, "model cannot be blank"
+	}
+	if len(m) > 140 {
+		return "", 0, "model must be <= 140 characters"
+	}
+	model := ChatModel(m)
+	return model, providerFor[model], ""
+}
+
 func parseOpenAIParams(r *http.Request, model ChatModel) (params messageParams, reason string) {
 	limit, ok := modelMaxOutputTokens[model]
 	if !ok || limit <= 0 {
@@ -116,4 +178,16 @@ func parseAnthropicParams(r *http.Request, model ChatModel) (params messageParam
 	}
 
 	return
+}
+
+func isNonEmptyAlnum(s string) bool {
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if !(c >= 'a' && c <= 'z') &&
+			!(c >= 'A' && c <= 'Z') &&
+			!(c >= '0' && c <= '9') {
+			return false
+		}
+	}
+	return true
 }
