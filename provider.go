@@ -190,13 +190,6 @@ var providerFor = map[ChatModel]ChatProvider{
 	ChatModelOpenAIGPT3_5Turbo16k0613:               ChatProviderOpenAI, // deprecated, retired 2024
 }
 
-const (
-	// FallbackOpenAIChatModel is used when model not specified.
-	FallbackOpenAIChatModel ChatModel = ChatModelOpenAIGPT5Nano
-	// FallbackAnthropicChatModel is used when model not specified.
-	FallbackAnthropicChatModel ChatModel = ChatModelClaude3_5HaikuLatest
-)
-
 var modelMaxOutputTokens = map[ChatModel]int64{
 	// Claude 3.7 Sonnet
 	ChatModelClaude3_7SonnetLatest:   64_000,
