@@ -191,9 +191,9 @@ func (s *Server) serveRoot(w http.ResponseWriter, r *http.Request) {
 	}
 	io.WriteString(w, `<html><body><h1>chathelper</h1>
 <ul>
-	<li><b><a href="/chat">/chat</a></b>: chat in a channel</li>
-	<li><b><a href="/wait">/wait</a></b>: long-poll 30s for next message (use ?id=&lt;channel&gt;&amp;after=&lt;RFC3339Nano&gt;)</li>
-	<li><b><a href="/recent">/recent</a></b>: recent messages in a channel</li>
+  <li><b><a href="/chat">/chat</a></b>: chat in a channel</li>
+  <li><b><a href="/wait">/wait</a></b>: long-poll 30s for next message (use ?id=&lt;channel&gt;&amp;after=&lt;RFC3339Nano&gt;)</li>
+  <li><b><a href="/recent">/recent</a></b>: recent messages in a channel</li>
 </ul></body></html>`)
 }
 
@@ -272,7 +272,7 @@ func (s *Server) serveChat(w http.ResponseWriter, r *http.Request) {
           <span id="time"></span>
           <span id="user"></span>
           <span id="channel"></span>
-					<span id="params" class="params"></span>
+          <span id="params" class="params"></span>
           <span id="spinner" class="spinner" aria-live="polite"></span>
         </div>
 
