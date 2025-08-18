@@ -58,7 +58,6 @@ class Chat {
   }
 
   setParams(temperature = this.temperature, maxTokens = this.maxTokens, topP = this.topP, topK = this.topK) {
-    // TODO: validate
     this.temperature = temperature
     this.maxTokens = maxTokens
     this.topP = topP
