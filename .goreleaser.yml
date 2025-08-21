@@ -5,6 +5,7 @@ project_name: burp
 builds:
   - id: burp
     main: ./
+    binary: burp-server
     flags:
       - -trimpath
     env:
