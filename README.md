@@ -17,7 +17,7 @@ go install github.com/tetsuo/burp
 #### Start the burp server
 
 ```bash
- $ burp
+ $ burp-server
  2025/08/18 23:16:55 enabling anthropic models
  2025/08/18 23:16:55 enabling openai models
  2025/08/18 23:16:55 listening on localhost:9042
